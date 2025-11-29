@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generator Imagini OBSID</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --accent-color: #e74c3c;
+        }
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+        .navbar {
+            background: rgba(0,0,0,0.3) !important;
+            backdrop-filter: blur(10px);
+        }
+        .card {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 15px;
+        }
+        .card-header {
+            background: rgba(0,0,0,0.2);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            border-radius: 15px 15px 0 0 !important;
+        }
+        .form-control, .form-select {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #fff;
+        }
+        .form-control:focus, .form-select:focus {
+            background: rgba(255,255,255,0.15);
+            border-color: var(--accent-color);
+            color: #fff;
+            box-shadow: 0 0 0 0.25rem rgba(231, 76, 60, 0.25);
+        }
+        .form-control::placeholder {
+            color: rgba(255,255,255,0.5);
+        }
+        .btn-primary {
+            background: var(--accent-color);
+            border: none;
+        }
+        .btn-primary:hover {
+            background: #c0392b;
+        }
+        .btn-outline-light:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        .nav-tabs {
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+        .nav-tabs .nav-link {
+            color: rgba(255,255,255,0.7);
+            border: none;
+            border-bottom: 2px solid transparent;
+        }
+        .nav-tabs .nav-link:hover {
+            color: #fff;
+            border-color: transparent;
+        }
+        .nav-tabs .nav-link.active {
+            background: transparent;
+            color: #fff;
+            border-bottom: 2px solid var(--accent-color);
+        }
+        .preview-container {
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 20px;
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .preview-container img {
+            max-width: 100%;
+            max-height: 500px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        .zone-editor {
+            position: relative;
+            display: inline-block;
+            cursor: crosshair;
+        }
+        .zone-editor img {
+            max-width: 100%;
+        }
+        .zone-box {
+            position: absolute;
+            border: 2px dashed;
+            background: rgba(255,255,255,0.1);
+            cursor: move;
+        }
+        .zone-box.text-zone {
+            border-color: #3498db;
+        }
+        .zone-box.image-zone {
+            border-color: #2ecc71;
+        }
+        .zone-corner {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: #fff;
+            border: 2px solid #333;
+            border-radius: 2px;
+        }
+        .corner-nw { top: -6px; left: -6px; cursor: nw-resize; }
+        .corner-ne { top: -6px; right: -6px; cursor: ne-resize; }
+        .corner-sw { bottom: -6px; left: -6px; cursor: sw-resize; }
+        .corner-se { bottom: -6px; right: -6px; cursor: se-resize; }
+        .upload-zone {
+            border: 2px dashed rgba(255,255,255,0.3);
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .upload-zone:hover {
+            border-color: var(--accent-color);
+            background: rgba(231, 76, 60, 0.1);
+        }
+        .upload-zone.dragover {
+            border-color: var(--accent-color);
+            background: rgba(231, 76, 60, 0.2);
+        }
+        .product-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .product-item {
+            padding: 10px 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .product-item:hover {
+            background: rgba(255,255,255,0.1);
+        }
+        .product-item.selected {
+            background: rgba(231, 76, 60, 0.3);
+        }
+        .status-badge {
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+        .range-value {
+            background: rgba(0,0,0,0.3);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            display: none;
+        }
+        .loading-overlay.show {
+            display: flex;
+        }
+        #exportProgress {
+            width: 300px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="text-center">
+            <div class="spinner-border text-danger mb-3" style="width: 3rem; height: 3rem;"></div>
+            <h5 id="loadingText">Se proceseaza...</h5>
+            <div class="progress mt-3" id="exportProgress" style="display:none;">
+                <div class="progress-bar bg-danger" role="progressbar" style="width: 0%"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="#">
+                <i class="bi bi-image me-2"></i>Generator Imagini OBSID
+            </a>
+            <span class="badge bg-{{ 'success' if rembg_ok else 'danger' }}">
+                rembg: {{ 'OK' if rembg_ok else 'Indisponibil' }}
+            </span>
+        </div>
+    </nav>
+
+    <div class="container pb-5">
+        <!-- Tabs -->
+        <ul class="nav nav-tabs mb-4" id="mainTabs" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-upload">
+                    <i class="bi bi-cloud-upload me-2"></i>Upload Fisiere
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-settings">
+                    <i class="bi bi-gear me-2"></i>Setari Zone
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-preview">
+                    <i class="bi bi-eye me-2"></i>Preview
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-custom">
+                    <i class="bi bi-pencil-square me-2"></i>Generare Custom
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-export">
+                    <i class="bi bi-download me-2"></i>Export
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+            <!-- Tab Upload -->
+            <div class="tab-pane fade show active" id="tab-upload">
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <i class="bi bi-image me-2"></i>Template Imagine
+                            </div>
+                            <div class="card-body">
+                                <div class="upload-zone" id="uploadTemplate" onclick="document.getElementById('fileTemplate').click()">
+                                    <i class="bi bi-image display-4 mb-3 d-block"></i>
+                                    <p class="mb-0">Click sau trage imaginea template aici</p>
+                                    <small class="text-muted">Format: JPG, PNG</small>
+                                </div>
+                                <input type="file" id="fileTemplate" accept="image/*" style="display:none">
+                                <div id="templateStatus" class="mt-3"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <i class="bi bi-fonts me-2"></i>Font (Montserrat Bold)
+                            </div>
+                            <div class="card-body">
+                                <div class="upload-zone" id="uploadFont" onclick="document.getElementById('fileFont').click()">
+                                    <i class="bi bi-fonts display-4 mb-3 d-block"></i>
+                                    <p class="mb-0">Click sau trage font-ul aici</p>
+                                    <small class="text-muted">Format: TTF</small>
+                                </div>
+                                <input type="file" id="fileFont" accept=".ttf,.otf" style="display:none">
+                                <div id="fontStatus" class="mt-3"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <i class="bi bi-file-earmark-excel me-2"></i>Excel Produse (Nume)
+                            </div>
+                            <div class="card-body">
+                                <div class="upload-zone" id="uploadExcelNames" onclick="document.getElementById('fileExcelNames').click()">
+                                    <i class="bi bi-file-earmark-excel display-4 mb-3 d-block"></i>
+                                    <p class="mb-0">Excel cu SKU si denumiri produse</p>
+                                    <small class="text-muted">Coloane: Cod Produs (SKU), Denumire Produs</small>
+                                </div>
+                                <input type="file" id="fileExcelNames" accept=".xlsx,.xls" style="display:none">
+                                <div id="excelNamesStatus" class="mt-3"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <i class="bi bi-file-earmark-excel me-2"></i>Excel Imagini (URL-uri)
+                            </div>
+                            <div class="card-body">
+                                <div class="upload-zone" id="uploadExcelImages" onclick="document.getElementById('fileExcelImages').click()">
+                                    <i class="bi bi-file-earmark-excel display-4 mb-3 d-block"></i>
+                                    <p class="mb-0">Excel cu URL-uri imagini parfumuri</p>
+                                    <small class="text-muted">Coloane: Cod Produs (SKU), Imagine principala</small>
+                                </div>
+                                <input type="file" id="fileExcelImages" accept=".xlsx,.xls" style="display:none">
+                                <div id="excelImagesStatus" class="mt-3"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Settings -->
+            <div class="tab-pane fade" id="tab-settings">
+                <div class="row g-4">
+                    <div class="col-lg-8">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-bounding-box me-2"></i>Editor Zone</span>
+                                <div>
+                                    <button class="btn btn-sm btn-outline-light me-2" onclick="setEditMode('text')">
+                                        <i class="bi bi-fonts me-1"></i>Zona Text
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-light" onclick="setEditMode('image')">
+                                        <i class="bi bi-image me-1"></i>Zona Imagine
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="zone-editor" id="zoneEditor">
+                                    <img src="/template-image" id="editorImage" alt="Template">
+                                    <div class="zone-box text-zone" id="textZoneBox">
+                                        <div class="zone-corner corner-nw" data-corner="nw"></div>
+                                        <div class="zone-corner corner-ne" data-corner="ne"></div>
+                                        <div class="zone-corner corner-sw" data-corner="sw"></div>
+                                        <div class="zone-corner corner-se" data-corner="se"></div>
+                                    </div>
+                                    <div class="zone-box image-zone" id="imageZoneBox">
+                                        <div class="zone-corner corner-nw" data-corner="nw"></div>
+                                        <div class="zone-corner corner-ne" data-corner="ne"></div>
+                                        <div class="zone-corner corner-sw" data-corner="sw"></div>
+                                        <div class="zone-corner corner-se" data-corner="se"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <i class="bi bi-fonts me-2 text-primary"></i>Zona TEXT
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <label class="form-label small">X</label>
+                                        <input type="number" class="form-control" id="textX" value="{{ config.text_box[0] }}">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small">Y</label>
+                                        <input type="number" class="form-control" id="textY" value="{{ config.text_box[1] }}">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small">Latime</label>
+                                        <input type="number" class="form-control" id="textW" value="{{ config.text_box[2] }}">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small">Inaltime</label>
+                                        <input type="number" class="form-control" id="textH" value="{{ config.text_box[3] }}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <i class="bi bi-image me-2 text-success"></i>Zona IMAGINE
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <label class="form-label small">X</label>
+                                        <input type="number" class="form-control" id="imageX" value="{{ config.image_box[0] }}">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small">Y</label>
+                                        <input type="number" class="form-control" id="imageY" value="{{ config.image_box[1] }}">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small">Latime</label>
+                                        <input type="number" class="form-control" id="imageW" value="{{ config.image_box[2] }}">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small">Inaltime</label>
+                                        <input type="number" class="form-control" id="imageH" value="{{ config.image_box[3] }}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <i class="bi bi-arrows-angle-expand me-2"></i>Scalare Imagine Parfum
+                            </div>
+                            <div class="card-body">
+                                <input type="range" class="form-range" id="imageScale" min="50" max="200" value="{{ config.image_scale }}">
+                                <div class="text-center">
+                                    <span class="range-value" id="scaleValue">{{ config.image_scale }}%</span>
+                                </div>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary w-100" onclick="saveConfig()">
+                            <i class="bi bi-save me-2"></i>Salveaza Configuratia
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Preview -->
+            <div class="tab-pane fade" id="tab-preview">
+                <div class="row g-4">
+                    <div class="col-lg-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <i class="bi bi-list-ul me-2"></i>Lista Produse
+                                <span class="badge bg-secondary float-end" id="productCount">0</span>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="product-list" id="productList">
+                                    <div class="text-center py-5 text-muted">
+                                        <i class="bi bi-inbox display-4 d-block mb-3"></i>
+                                        Incarca fisierele Excel mai intai
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-footer">
+                                <button class="btn btn-outline-light w-100" onclick="loadProducts()">
+                                    <i class="bi bi-arrow-clockwise me-2"></i>Reincarca Lista
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-8">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-eye me-2"></i>Preview</span>
+                                <button class="btn btn-sm btn-primary" id="downloadSingle" onclick="downloadCurrentImage()" disabled>
+                                    <i class="bi bi-download me-2"></i>Descarca Imaginea
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <div class="preview-container" id="previewContainer">
+                                    <div class="text-center text-muted">
+                                        <i class="bi bi-image display-1 d-block mb-3"></i>
+                                        <p>Selecteaza un produs pentru preview</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Custom -->
+            <div class="tab-pane fade" id="tab-custom">
+                <div class="row g-4">
+                    <div class="col-lg-5">
+                        <div class="card">
+                            <div class="card-header">
+                                <i class="bi bi-pencil-square me-2"></i>Generare Imagine Custom
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label">SKU (pentru numele fisierului)</label>
+                                    <input type="text" class="form-control" id="customSku" placeholder="ex: 1234567890-10">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Nume Parfum *</label>
+                                    <input type="text" class="form-control" id="customName" placeholder="ex: Afnan 9PM Rebel">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">URL Imagine Parfum</label>
+                                    <input type="text" class="form-control" id="customUrl" placeholder="https://...">
+                                    <small class="text-muted">Optional - lasa gol pentru imagine doar cu text</small>
+                                </div>
+                                <div class="d-grid gap-2">
+                                    <button class="btn btn-outline-light" onclick="previewCustom()">
+                                        <i class="bi bi-eye me-2"></i>Preview
+                                    </button>
+                                    <button class="btn btn-primary" onclick="downloadCustom()">
+                                        <i class="bi bi-download me-2"></i>Genereaza si Descarca
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-7">
+                        <div class="card">
+                            <div class="card-header">
+                                <i class="bi bi-eye me-2"></i>Preview Custom
+                            </div>
+                            <div class="card-body">
+                                <div class="preview-container" id="customPreviewContainer">
+                                    <div class="text-center text-muted">
+                                        <i class="bi bi-image display-1 d-block mb-3"></i>
+                                        <p>Completeaza datele si apasa Preview</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Export -->
+            <div class="tab-pane fade" id="tab-export">
+                <div class="row justify-content-center">
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header text-center">
+                                <i class="bi bi-download me-2"></i>Export Toate Imaginile
+                            </div>
+                            <div class="card-body text-center py-5">
+                                <i class="bi bi-file-earmark-zip display-1 d-block mb-4 text-warning"></i>
+                                <h5 class="mb-3">Exporta toate imaginile intr-un fisier ZIP</h5>
+                                <p class="text-muted mb-4">
+                                    Se vor genera imagini pentru toate produsele din Excel care au SKU terminat in -10.
+                                    <br>Procesul poate dura cateva minute.
+                                </p>
+                                <button class="btn btn-primary btn-lg px-5" onclick="exportAll()">
+                                    <i class="bi bi-download me-2"></i>Exporta Toate (ZIP)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentProduct = null;
+        let products = [];
+        let config = {{ config | tojson }};
+
+        // Upload handlers
+        document.getElementById('fileTemplate').addEventListener('change', function(e) {
+            uploadFile(e.target.files[0], '/api/upload-template', 'templateStatus', 'Template');
+        });
+
+        document.getElementById('fileFont').addEventListener('change', function(e) {
+            uploadFile(e.target.files[0], '/api/upload-font', 'fontStatus', 'Font');
+        });
+
+        document.getElementById('fileExcelNames').addEventListener('change', function(e) {
+            uploadExcel(e.target.files[0], 'names', 'excelNamesStatus');
+        });
+
+        document.getElementById('fileExcelImages').addEventListener('change', function(e) {
+            uploadExcel(e.target.files[0], 'images', 'excelImagesStatus');
+        });
+
+        // Scale slider
+        document.getElementById('imageScale').addEventListener('input', function(e) {
+            document.getElementById('scaleValue').textContent = e.target.value + '%';
+        });
+
+        function uploadFile(file, url, statusId, name) {
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            showLoading('Se incarca ' + name + '...');
+
+            fetch(url, { method: 'POST', body: formData })
+                .then(r => r.json())
+                .then(data => {
+                    hideLoading();
+                    if (data.error) {
+                        document.getElementById(statusId).innerHTML = `<span class="text-danger"><i class="bi bi-x-circle me-1"></i>${data.error}</span>`;
+                    } else {
+                        document.getElementById(statusId).innerHTML = `<span class="text-success"><i class="bi bi-check-circle me-1"></i>${name} incarcat cu succes!</span>`;
+                        // Refresh editor image
+                        if (url.includes('template')) {
+                            document.getElementById('editorImage').src = '/template-image?' + Date.now();
+                        }
+                    }
+                })
+                .catch(err => {
+                    hideLoading();
+                    document.getElementById(statusId).innerHTML = `<span class="text-danger"><i class="bi bi-x-circle me-1"></i>Eroare: ${err}</span>`;
+                });
+        }
+
+        function uploadExcel(file, type, statusId) {
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('type', type);
+
+            showLoading('Se incarca Excel...');
+
+            fetch('/api/upload-excel', { method: 'POST', body: formData })
+                .then(r => r.json())
+                .then(data => {
+                    hideLoading();
+                    if (data.error) {
+                        document.getElementById(statusId).innerHTML = `<span class="text-danger"><i class="bi bi-x-circle me-1"></i>${data.error}</span>`;
+                    } else {
+                        document.getElementById(statusId).innerHTML = `
+                            <span class="text-success"><i class="bi bi-check-circle me-1"></i>Incarcat: ${data.rows} randuri</span>
+                            <br><small class="text-muted">Coloane: ${data.columns.join(', ')}</small>
+                        `;
+                    }
+                })
+                .catch(err => {
+                    hideLoading();
+                    document.getElementById(statusId).innerHTML = `<span class="text-danger"><i class="bi bi-x-circle me-1"></i>Eroare: ${err}</span>`;
+                });
+        }
+
+        function loadProducts() {
+            showLoading('Se incarca produsele...');
+
+            fetch('/api/products')
+                .then(r => r.json())
+                .then(data => {
+                    hideLoading();
+                    if (data.error) {
+                        alert('Eroare: ' + data.error);
+                        return;
+                    }
+
+                    products = data.products;
+                    document.getElementById('productCount').textContent = data.total;
+
+                    const list = document.getElementById('productList');
+                    if (products.length === 0) {
+                        list.innerHTML = '<div class="text-center py-5 text-muted">Nu exista produse</div>';
+                        return;
+                    }
+
+                    list.innerHTML = products.map((p, i) => `
+                        <div class="product-item" onclick="selectProduct(${i})">
+                            <div class="fw-bold small">${p.sku}</div>
+                            <div class="text-muted small text-truncate">${p.name}</div>
+                        </div>
+                    `).join('');
+                })
+                .catch(err => {
+                    hideLoading();
+                    alert('Eroare: ' + err);
+                });
+        }
+
+        function selectProduct(index) {
+            currentProduct = products[index];
+
+            // Update selection UI
+            document.querySelectorAll('.product-item').forEach((el, i) => {
+                el.classList.toggle('selected', i === index);
+            });
+
+            // Generate preview
+            showLoading('Se genereaza preview...');
+
+            fetch('/api/preview', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: currentProduct.name, url: currentProduct.url })
+            })
+                .then(r => r.json())
+                .then(data => {
+                    hideLoading();
+                    if (data.error) {
+                        document.getElementById('previewContainer').innerHTML = `<div class="text-danger">${data.error}</div>`;
+                        return;
+                    }
+
+                    document.getElementById('previewContainer').innerHTML = `<img src="${data.image}" alt="Preview">`;
+                    document.getElementById('downloadSingle').disabled = false;
+                })
+                .catch(err => {
+                    hideLoading();
+                    document.getElementById('previewContainer').innerHTML = `<div class="text-danger">Eroare: ${err}</div>`;
+                });
+        }
+
+        function downloadCurrentImage() {
+            if (!currentProduct) return;
+
+            showLoading('Se genereaza imaginea...');
+
+            fetch('/api/generate-single', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(currentProduct)
+            })
+                .then(r => r.blob())
+                .then(blob => {
+                    hideLoading();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = currentProduct.sku + '.jpg';
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                })
+                .catch(err => {
+                    hideLoading();
+                    alert('Eroare: ' + err);
+                });
+        }
+
+        function previewCustom() {
+            const name = document.getElementById('customName').value.trim();
+            const url = document.getElementById('customUrl').value.trim();
+
+            if (!name) {
+                alert('Introdu numele parfumului!');
+                return;
+            }
+
+            showLoading('Se genereaza preview...');
+
+            fetch('/api/preview', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name, url: url || null })
+            })
+                .then(r => r.json())
+                .then(data => {
+                    hideLoading();
+                    if (data.error) {
+                        document.getElementById('customPreviewContainer').innerHTML = `<div class="text-danger">${data.error}</div>`;
+                        return;
+                    }
+
+                    document.getElementById('customPreviewContainer').innerHTML = `<img src="${data.image}" alt="Preview">`;
+                })
+                .catch(err => {
+                    hideLoading();
+                    document.getElementById('customPreviewContainer').innerHTML = `<div class="text-danger">Eroare: ${err}</div>`;
+                });
+        }
+
+        function downloadCustom() {
+            const sku = document.getElementById('customSku').value.trim() || 'custom';
+            const name = document.getElementById('customName').value.trim();
+            const url = document.getElementById('customUrl').value.trim();
+
+            if (!name) {
+                alert('Introdu numele parfumului!');
+                return;
+            }
+
+            showLoading('Se genereaza imaginea...');
+
+            fetch('/api/generate-custom', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sku: sku, name: name, url: url || null })
+            })
+                .then(r => r.blob())
+                .then(blob => {
+                    hideLoading();
+                    const blobUrl = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = blobUrl;
+                    a.download = sku + '.jpg';
+                    a.click();
+                    window.URL.revokeObjectURL(blobUrl);
+                })
+                .catch(err => {
+                    hideLoading();
+                    alert('Eroare: ' + err);
+                });
+        }
+
+        function exportAll() {
+            if (!confirm('Sigur vrei sa exporti toate imaginile? Procesul poate dura cateva minute.')) {
+                return;
+            }
+
+            showLoading('Se exporta imaginile... Acest proces poate dura cateva minute.');
+
+            fetch('/api/export-all', { method: 'POST' })
+                .then(r => r.blob())
+                .then(blob => {
+                    hideLoading();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'imagini_export.zip';
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                })
+                .catch(err => {
+                    hideLoading();
+                    alert('Eroare: ' + err);
+                });
+        }
+
+        function saveConfig() {
+            config = {
+                text_box: [
+                    parseInt(document.getElementById('textX').value),
+                    parseInt(document.getElementById('textY').value),
+                    parseInt(document.getElementById('textW').value),
+                    parseInt(document.getElementById('textH').value)
+                ],
+                image_box: [
+                    parseInt(document.getElementById('imageX').value),
+                    parseInt(document.getElementById('imageY').value),
+                    parseInt(document.getElementById('imageW').value),
+                    parseInt(document.getElementById('imageH').value)
+                ],
+                image_scale: parseInt(document.getElementById('imageScale').value)
+            };
+
+            fetch('/api/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(config)
+            })
+                .then(r => r.json())
+                .then(data => {
+                    alert('Configuratia a fost salvata!');
+                    updateZoneBoxes();
+                })
+                .catch(err => alert('Eroare: ' + err));
+        }
+
+        function updateZoneBoxes() {
+            const img = document.getElementById('editorImage');
+            const scale = img.clientWidth / img.naturalWidth;
+
+            const textBox = document.getElementById('textZoneBox');
+            textBox.style.left = (config.text_box[0] * scale) + 'px';
+            textBox.style.top = (config.text_box[1] * scale) + 'px';
+            textBox.style.width = (config.text_box[2] * scale) + 'px';
+            textBox.style.height = (config.text_box[3] * scale) + 'px';
+
+            const imageBox = document.getElementById('imageZoneBox');
+            imageBox.style.left = (config.image_box[0] * scale) + 'px';
+            imageBox.style.top = (config.image_box[1] * scale) + 'px';
+            imageBox.style.width = (config.image_box[2] * scale) + 'px';
+            imageBox.style.height = (config.image_box[3] * scale) + 'px';
+        }
+
+        // Initialize zone boxes when image loads
+        document.getElementById('editorImage').addEventListener('load', updateZoneBoxes);
+        window.addEventListener('resize', updateZoneBoxes);
+
+        function showLoading(text) {
+            document.getElementById('loadingText').textContent = text || 'Se proceseaza...';
+            document.getElementById('loadingOverlay').classList.add('show');
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').classList.remove('show');
+        }
+
+        // Drag and drop support
+        ['uploadTemplate', 'uploadFont', 'uploadExcelNames', 'uploadExcelImages'].forEach(id => {
+            const el = document.getElementById(id);
+            el.addEventListener('dragover', e => { e.preventDefault(); el.classList.add('dragover'); });
+            el.addEventListener('dragleave', e => { el.classList.remove('dragover'); });
+            el.addEventListener('drop', e => {
+                e.preventDefault();
+                el.classList.remove('dragover');
+                const input = el.querySelector('input[type=file]') || document.getElementById('file' + id.replace('upload', ''));
+                if (e.dataTransfer.files.length > 0) {
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(e.dataTransfer.files[0]);
+                    input.files = dataTransfer.files;
+                    input.dispatchEvent(new Event('change'));
+                }
+            });
+        });
+
+        // Zone editor drag functionality
+        let dragState = null;
+        let activeZone = null;
+
+        function setEditMode(mode) {
+            activeZone = mode;
+            document.getElementById('textZoneBox').style.pointerEvents = mode === 'text' ? 'auto' : 'none';
+            document.getElementById('imageZoneBox').style.pointerEvents = mode === 'image' ? 'auto' : 'none';
+        }
+
+        document.querySelectorAll('.zone-box').forEach(box => {
+            box.addEventListener('mousedown', function(e) {
+                if (e.target.classList.contains('zone-corner')) {
+                    dragState = { type: 'resize', corner: e.target.dataset.corner, box: this };
+                } else {
+                    dragState = { type: 'move', box: this };
+                }
+                e.preventDefault();
+            });
+        });
+
+        document.addEventListener('mousemove', function(e) {
+            if (!dragState) return;
+
+            const img = document.getElementById('editorImage');
+            const rect = img.getBoundingClientRect();
+            const scale = img.naturalWidth / img.clientWidth;
+
+            const x = (e.clientX - rect.left) * scale;
+            const y = (e.clientY - rect.top) * scale;
+
+            const isText = dragState.box.id === 'textZoneBox';
+            const configKey = isText ? 'text_box' : 'image_box';
+
+            if (dragState.type === 'move') {
+                config[configKey][0] = Math.max(0, Math.round(x - config[configKey][2] / 2));
+                config[configKey][1] = Math.max(0, Math.round(y - config[configKey][3] / 2));
+            } else if (dragState.type === 'resize') {
+                const corner = dragState.corner;
+                const box = config[configKey];
+
+                if (corner.includes('e')) box[2] = Math.max(20, Math.round(x - box[0]));
+                if (corner.includes('w')) {
+                    const newW = box[0] + box[2] - x;
+                    if (newW > 20) { box[2] = Math.round(newW); box[0] = Math.round(x); }
+                }
+                if (corner.includes('s')) box[3] = Math.max(20, Math.round(y - box[1]));
+                if (corner.includes('n')) {
+                    const newH = box[1] + box[3] - y;
+                    if (newH > 20) { box[3] = Math.round(newH); box[1] = Math.round(y); }
+                }
+            }
+
+            // Update inputs
+            if (isText) {
+                document.getElementById('textX').value = config.text_box[0];
+                document.getElementById('textY').value = config.text_box[1];
+                document.getElementById('textW').value = config.text_box[2];
+                document.getElementById('textH').value = config.text_box[3];
+            } else {
+                document.getElementById('imageX').value = config.image_box[0];
+                document.getElementById('imageY').value = config.image_box[1];
+                document.getElementById('imageW').value = config.image_box[2];
+                document.getElementById('imageH').value = config.image_box[3];
+            }
+
+            updateZoneBoxes();
+        });
+
+        document.addEventListener('mouseup', function() {
+            dragState = null;
+        });
+
+        // Input change handlers
+        ['textX', 'textY', 'textW', 'textH'].forEach(id => {
+            document.getElementById(id).addEventListener('change', function() {
+                const idx = ['textX', 'textY', 'textW', 'textH'].indexOf(id);
+                config.text_box[idx] = parseInt(this.value);
+                updateZoneBoxes();
+            });
+        });
+
+        ['imageX', 'imageY', 'imageW', 'imageH'].forEach(id => {
+            document.getElementById(id).addEventListener('change', function() {
+                const idx = ['imageX', 'imageY', 'imageW', 'imageH'].indexOf(id);
+                config.image_box[idx] = parseInt(this.value);
+                updateZoneBoxes();
+            });
+        });
+    </script>
+</body>
+</html>
